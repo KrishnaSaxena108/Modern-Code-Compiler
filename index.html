@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Modern Code Compiler</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prismjs/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
+    <style>
+        :root {
+            --primary-color: #2563eb;
+            --bg-dark: #1e1e1e;
+            --text-light: #e2e8f0;
+            --border-radius: 8px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background-color: #f8fafc;
+            color: #334155;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+        }
+
+        h1 {
+            text-align: center;
+            font-size: 2.5rem;
+            margin-bottom: 2rem;
+            color: var(--bg-dark);
+            font-weight: 700;
+        }
+
+        .editor-wrapper {
+            background: white;
+            border-radius: var(--border-radius);
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+            overflow: hidden;
+        }
+
+        .toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem;
+            background-color: var(--bg-dark);
+            border-bottom: 1px solid #2d2d2d;
+        }
+
+        #language-select {
+            background-color: #2d2d2d;
+            color: var(--text-light);
+            border: 1px solid #404040;
+            padding: 0.5rem 1rem;
+            border-radius: var(--border-radius);
+            font-size: 0.875rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        #language-select:hover {
+            border-color: var(--primary-color);
+        }
+
+        #code-editor {
+            width: 100%;
+            min-height: 400px;
+            padding: 1rem;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.875rem;
+            line-height: 1.7;
+            color: var(--text-light);
+            background-color: var(--bg-dark);
+            border: none;
+            resize: vertical;
+            tab-size: 4;
+        }
+
+        #code-editor:focus {
+            outline: none;
+        }
+
+        .output-section {
+            margin-top: 1rem;
+        }
+
+        #output-console {
+            background-color: var(--bg-dark);
+            color: #10b981;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.875rem;
+            padding: 1rem;
+            border-radius: var(--border-radius);
+            min-height: 150px;
+            max-height: 300px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+        }
+
+        #compile-btn {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: var(--border-radius);
+            font-size: 0.875rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        #compile-btn:hover {
+            background-color: #1d4ed8;
+        }
+
+        #compile-btn:disabled {
+            background-color: #94a3b8;
+            cursor: not-allowed;
+        }
+
+        .spinner {
+            width: 16px;
+            height: 16px;
+            border: 2px solid #ffffff;
+            border-bottom-color: transparent;
+            border-radius: 50%;
+            display: none;
+            animation: rotation 1s linear infinite;
+        }
+
+        @keyframes rotation {
+            from {
+                transform: rotate(0deg);
+            }
+
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .error {
+            color: #ef4444;
+        }
+
+        .success {
+            color: #10b981;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>Modern Code Compiler</h1>
+        <div class="editor-wrapper">
+            <div class="toolbar">
+                <select id="language-select">
+                    <option value="0">Python</option>
+                    <option value="4">JavaScript</option>
+                    <option value="7">C</option>
+                    <option value="77">C++</option>
+                    <option value="8">Java</option>
+                </select>
+                <button id="compile-btn">
+                    <span class="spinner"></span>
+                    <span class="btn-text">Run Code</span>
+                </button>
+            </div>
+            <textarea id="code-editor" placeholder="// Write your code here..."></textarea>
+        </div>
+        <div class="output-section">
+            <div id="output-console">// Output will appear here...</div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prismjs/1.29.0/prism.min.js"></script>
+    <script>
+        const codeEditor = document.getElementById('code-editor');
+        const languageSelect = document.getElementById('language-select');
+        const outputConsole = document.getElementById('output-console');
+        const compileBtn = document.getElementById('compile-btn');
+        const spinner = document.querySelector('.spinner');
+        const btnText = document.querySelector('.btn-text');
+
+        // Handle compilation state
+        function setLoading(isLoading) {
+            compileBtn.disabled = isLoading;
+            spinner.style.display = isLoading ? 'block' : 'none';
+            btnText.textContent = isLoading ? 'Compiling...' : 'Run Code';
+        }
+
+        // Format output with syntax highlighting
+        function formatOutput(output, isError = false) {
+            const className = isError ? 'error' : 'success';
+            return `<span class="${className}">${output}</span>`;
+        }
+
+        // Mock compilation function for demonstration
+        async function mockCompilation(code, language) {
+            return new Promise((resolve) => {
+                setTimeout(() => {
+                    const languageMap = {
+                        '0': 'Python',
+                        '4': 'JavaScript',
+                        '7': 'C',
+                        '77': 'C++',
+                        '8': 'Java'
+                    };
+
+                    // Simple demonstration output
+                    if (code.includes('print') || code.includes('console.log')) {
+                        resolve({
+                            success: true,
+                            output: `[${languageMap[language]} Output]\n${code.includes('Hello') ? 'Hello, World!' : 'Output simulation'}`
+                        });
+                    } else {
+                        resolve({
+                            success: false,
+                            error: `Compilation Error: Please use print/console.log for demo output in ${languageMap[language]}`
+                        });
+                    }
+                }, 1500); // Simulate network delay
+            });
+        }
+
+        compileBtn.addEventListener('click', async () => {
+            const code = codeEditor.value.trim();
+
+            if (!code) {
+                outputConsole.innerHTML = formatOutput('Please enter some code first!', true);
+                return;
+            }
+
+            setLoading(true);
+            outputConsole.innerHTML = 'Compiling...';
+
+            try {
+                // Use mock compilation instead of actual API
+                const result = await mockCompilation(code, languageSelect.value);
+
+                setLoading(false);
+                if (result.success) {
+                    outputConsole.innerHTML = formatOutput(result.output);
+                } else {
+                    outputConsole.innerHTML = formatOutput(result.error, true);
+                }
+            } catch (error) {
+                setLoading(false);
+                outputConsole.innerHTML = formatOutput(`Error: ${error.message}`, true);
+            }
+        });
+
+        // Add some sample code on load based on selected language
+        function updateSampleCode() {
+            const language = languageSelect.value;
+            let sampleCode = '';
+
+            switch (language) {
+                case '0': // Python
+                    sampleCode = '# Write a simple Python program\nprint("Hello, World!")';
+                    break;
+                case '4': // JavaScript
+                    sampleCode = '// Write a simple JavaScript program\nconsole.log("Hello, World!");';
+                    break;
+                case '7': // C
+                    sampleCode = '// Write a simple C program\n#include <stdio.h>\n\nint main() {\n    printf("Hello, World!");\n    return 0;\n}';
+                    break;
+                case '77': // C++
+                    sampleCode = '// Write a simple C++ program\n#include <iostream>\n\nint main() {\n    std::cout << "Hello, World!";\n    return 0;\n}';
+                    break;
+                case '8': // Java
+                    sampleCode = '// Write a simple Java program\npublic class Main {\n    public static void main(String[] args) {\n        System.out.println("Hello, World!");\n    }\n}';
+                    break;
+            }
+            codeEditor.value = sampleCode;
+        }
+
+        languageSelect.addEventListener('change', updateSampleCode);
+        updateSampleCode(); // Set initial sample code
+    </script>
+</body>
+
+</html>
